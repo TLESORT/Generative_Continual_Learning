@@ -41,6 +41,32 @@ source activate py36
 
 TODO
 
+## Experiments Done
+
+#### Dataset
+
+* MNIST
+* Fashion MNIST
+
+
+#### Generative Models
+
+* GAN
+* CGAN
+* WGAN
+* WGAN_GP
+* VAE
+* CVAE
+
+#### Task
+
+* Disjoint tasks -> 10 tasks
+
+
+#### To Add
+
+* Cifar10
+
 ## Run experiments
 
 
