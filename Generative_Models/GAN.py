@@ -18,6 +18,12 @@ class GAN(GenerativeModel):
 
         epoch_start_time = time.time()
         sum_loss_train = 0.
+        
+        self.y_real_= variable(torch.ones(self.batch_size, 1))
+        self.y_fake_ = variable(torch.zeros(self.batch_size, 1))
+
+        if self.gpu_mode:
+            self.y_real_, self.y_fake_ = self.y_real_.cuda(self.device), self.y_fake_.cuda(self.device)
 
 
         for iter, (x_, t_ ) in enumerate(train_loader):
