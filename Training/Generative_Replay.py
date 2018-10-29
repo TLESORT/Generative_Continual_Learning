@@ -3,7 +3,7 @@ from Training.Trainer import Trainer
 
 class Generative_Replay(Trainer):
     def __init__(self, model, args):
-        super(Generative_Transfer, self).__init__(model, args)
+        super(Generative_Replay, self).__init__(model, args)
 
     def create_next_data(self, ind_task):
 
