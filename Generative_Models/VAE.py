@@ -15,13 +15,14 @@ from Generative_Models.discriminator import Discriminator
 from Generative_Models.encoder import Encoder
 from Generative_Models.generator import Generator
 
+from utils import variable
+
 
 class VAE(GenerativeModel):
     def __init__(self, args):
 
         super(VAE, self).__init__(args)
-        if self.dataset == 'mnist' or self.dataset == 'fashion-mnist':
-            self.z_dim = 20
+
 
         self.E = Encoder(self.z_dim, self.dataset, self.conditional)
         self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
@@ -30,18 +31,8 @@ class VAE(GenerativeModel):
         if self.gpu_mode:
             self.E.cuda(self.device)
 
-        self.sample_z_ = Variable(torch.randn((self.sample_num, self.z_dim, 1, 1)), volatile=True)
-        if self.gpu_mode:
-            self.sample_z_ = self.sample_z_.cuda(self.device)
+        self.sample_z_ = variable(torch.randn((self.sample_num, self.z_dim, 1, 1)))
 
-        print("create G and D")
-        self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
-
-        print("create G and D 's optimizers")
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
-
-        if self.gpu_mode:
-            self.G.cuda(self.device)
 
     def load_G(self, ind_task):
         self.G.load_state_dict(
@@ -116,6 +107,9 @@ class VAE(GenerativeModel):
         else:
             reconstruction_function = nn.MSELoss()
         reconstruction_function.size_average = False
+
+        recon_x=recon_x.view(-1,self.input_size, self.size, self.size)
+        x=x.view(-1,self.input_size, self.size, self.size)
 
         BCE = reconstruction_function(recon_x, x)
 

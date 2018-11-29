@@ -48,12 +48,11 @@ class GenerativeModel(object):
         self.num_task = args.num_task
         self.num_classes = args.num_classes
 
-        if self.dataset == 'mnist':
-            self.z_dim = 62
-            self.input_size = 1
-            self.size = 28
-        elif self.dataset == 'fashion':
-            self.z_dim = 62
+        if self.dataset == 'mnist' or self.dataset == 'fashion':
+            if self.model_name == 'VAE' or self.model_name == 'CVAE':
+                self.z_dim = 20
+            else:
+                self.z_dim = 62
             self.input_size = 1
             self.size = 28
         elif self.dataset == 'cifar10':
@@ -100,12 +99,20 @@ class GenerativeModel(object):
         if self.gpu_mode:
             self.Classifier.net = self.Classifier.net.cuda(self.device)
 
+        self.expert = copy.deepcopy(self.Classifier)
+        self.expert.load_expert()
+
         # Logs
         self.train_hist = {}
         self.train_hist['D_loss'] = []
         self.train_hist['G_loss'] = []
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
+
+
+        # usefull for all GAN
+        self.y_real_ = variable(torch.ones(self.batch_size, 1))
+        self.y_fake_ = variable(torch.zeros(self.batch_size, 1))
 
 
     def test(self, predict, labels):
@@ -177,56 +184,30 @@ class GenerativeModel(object):
                        padding=0)
 
     # produce sample from all classes and return a batch of images and label
-    # if no ind_task are given we generate all labellize for all task
-    # if ind_task and multiplue_amnnotation == false we generate only for the actual task
-    # if ind_task and multiplue_amnnotation == true we generate only for all past tasks
-    def sample(self, batch_size=100, ind_task=None, multiple_annotation=False):
+    # if no task2generate are given we generate all labellize for all task
+    # if task2generate and annotate == false we generate only for the actual task
+    # if task2generate and annotate == true we generate only for all past tasks
+    def sample(self, batch_size=100, task2generate=None, multi_annotation=False):
 
         self.G.eval()
-        y = torch.ones(batch_size, 1)
-        if self.conditional:
+        y = None
 
-            z_ = self.random_tensor(batch_size, self.z_dim)
-            if ind_task is not None:
-                #y = torch.ones(batch_size, 1) * ind_task
-                if multiple_annotation:
-                    y = (torch.randperm(2*batch_size) % (ind_task+1))[:batch_size]
-                    y = y.view(batch_size, 1).long()
-                else:
-                    y = torch.ones(batch_size, 1) * ind_task
+        z_ = self.random_tensor(batch_size, self.z_dim)
+        output = self.G(variable(z_))
+
+        if not (task2generate is None):
+            self.expert.net.eval()
+            if multi_annotation:
+                y = self.expert.labelize(output, task2generate)
+
+            else:# if we generate only from actual task
+                y = torch.ones(batch_size, 1).long() * task2generate
                 y = y.long()
-            else:
-                # keep this please
-                #y = torch.LongTensor(batch_size, 1).random_() % self.num_classes
-                y = (torch.randperm(2 * batch_size) % (self.num_classes + 1))[:batch_size]
-                y = y.view(batch_size, 1)
-            y_onehot = torch.FloatTensor(batch_size, self.num_classes)
-            y_onehot.zero_().long()
-            y_onehot.scatter_(1, y, 1.0)
+        else:  # if no task2generate specified
+            # if we generate from all task
+            y = self.expert.labelize(output, self.num_classes)
 
-
-            y_onehot = variable(y_onehot)
-            output = self.G(variable(z_), y_onehot).data
-        else:
-            z_ = self.random_tensor(batch_size, self.z_dim)
-            y = (torch.randperm(1000) % 10)[:batch_size]
-            output = self.G(variable(z_))
-
-            if multiple_annotation or ind_task is None:
-                expert = copy.deepcopy(self.Classifier)
-                expert.load_expert()
-                expert.net.eval()
-                if  ind_task is None:
-                    y = expert.labelize(output, self.num_classes)
-                else:
-                    y = expert.labelize(output, ind_task)
-                y = y.data
-            else: # if no annotation we just give the ind_task as label (we should be here only for baseline)
-                y = torch.ones(batch_size, 1) * ind_task
-                y = y.long()
-            output = output.data
-
-        return output, y
+        return output.data, y
 
     # load a conditonal generator, encoders and discriminators
     def load_G(self, ind_task):
@@ -258,51 +239,57 @@ class GenerativeModel(object):
         self.G.eval()
         self.D.eval()
 
-    def generate_task(self, ind_task, nb_sample_train, annotate=False):
+    def generate_batch4Task(self, nb_sample_train, task2generate, multi_annotation):
+        return self.sample(batch_size=nb_sample_train, task2generate=task2generate, multi_annotation=multi_annotation)
+
+    def create_data_loader(self, nb_sample_train, task2generate, multi_annotation):
 
         c1 = 0
         c2 = 1
 
-        if self.dataset=='cifar10':
-            nb_at_once = 100
-        else:
-            nb_at_once = 1000
+        tasks_tr = []
+        x_tr, y_tr = self.generate_batch4Task(nb_sample_train, task2generate=task2generate,
+                                              multi_annotation=multi_annotation)
+        if self.gpu_mode:
+            x_tr, y_tr = x_tr.cpu(), y_tr.cpu()
+        tasks_tr.append([(c1, c2), x_tr.clone().view(-1, 784), y_tr.clone().view(-1)])
 
-        size_tensor=self.input_size*self.size*self.size
+        return DataLoader(tasks_tr, self.args)
 
-        if nb_sample_train >= nb_at_once:
-            for i in range(int(nb_sample_train / nb_at_once)):
-                tasks_tr = [] # reset the list
-                x_tr, y_tr = self.sample(nb_at_once, ind_task, annotate)
-                if self.gpu_mode:
-                    x_tr, y_tr = x_tr.cpu(), y_tr.cpu()
-                tasks_tr.append([(c1, c2), x_tr.clone().view(-1, size_tensor), y_tr.clone().view(-1)])
+    def generate_task(self, nb_sample_train, multi_annotation=False, classe2generate=None):
+
+
+        if nb_sample_train >= 1000:
+            for i in range(int(nb_sample_train / 1000)):
+
                 if i == 0:
-                    data_loader = DataLoader(tasks_tr, self.args)
+                    data_loader = self.create_data_loader(1000, classe2generate, multi_annotation)
                 else:
-                    data_loader.concatenate(DataLoader(tasks_tr, self.args))
+                    new_loader = self.create_data_loader(1000, classe2generate, multi_annotation)
+                    data_loader.concatenate(new_loader)
 
             # here we generate the remaining samples
-            if nb_sample_train % nb_at_once != 0:
-                tasks_tr = [] # reset the list
-                x_tr, y_tr = self.sample(nb_sample_train % nb_at_once, ind_task, annotate)
-                if self.gpu_mode:
-                    x_tr, y_tr = x_tr.cpu(), y_tr.cpu()
-                tasks_tr.append([(c1, c2), x_tr.clone().view(-1, size_tensor), y_tr.clone().view(-1)])
-                data_loader.concatenate(DataLoader(tasks_tr, self.args))
+            if nb_sample_train % 1000 != 0:
+                new_loader = self.create_data_loader(nb_sample_train % 1000, classe2generate, multi_annotation)
+                data_loader.concatenate(new_loader)
 
         else:
-            tasks_tr = []
-            x_tr, y_tr = self.sample(nb_sample_train, ind_task, annotate)
-            if self.gpu_mode:
-                x_tr, y_tr = x_tr.cpu(), y_tr.cpu()
-            tasks_tr.append([(c1, c2), x_tr.clone().view(-1, size_tensor), y_tr.clone().view(-1)])
-            data_loader = DataLoader(tasks_tr, self.args)
+            data_loader = self.create_data_loader(nb_sample_train, classe2generate, multi_annotation)
 
         return data_loader
 
     # This function generate a dataset for one class or for all class until ind_task included
-    def generate_dataset(self, ind_task, nb_sample_train, one_task=True, Train=True):
+    def generate_dataset(self, ind_task, nb_sample_per_task, one_task=True, Train=True, classe2generate=None):
+
+        # to generate 10 classes classe2generate is 9 as classes 0 to 9
+        if classe2generate is not None:
+            assert classe2generate <= self.num_classes
+            if self.task_type != "disjoint":
+                assert classe2generate == self.num_classes
+        else:
+            classe2generate = ind_task+1
+
+        train_loader_gen=None
 
         if Train:
             path = os.path.join(self.gen_dir, 'train_Task_' + str(ind_task) + '.pt')
@@ -311,42 +298,42 @@ class GenerativeModel(object):
             path = os.path.join(self.gen_dir, 'test_Task_' + str(ind_task) + '.pt')
             path_samples = os.path.join(self.sample_dir, 'samples_test_' + str(ind_task) + '.png')
 
-        if self.num_task==5:
+        # if we have only on task to generate
+        if one_task or ind_task == 0:  # generate only for the task ind_task
 
-            for i in range(2*(ind_task + 1)):  # we take from all task, actual one included
-                train_loader_ind = self.generate_task(i, nb_sample_train, annotate=True)
+            train_loader_gen = self.generate_task(nb_sample_per_task, multi_annotation=False, classe2generate=classe2generate)
+
+        else:  # else case we generate for all previous task
+
+            for i in range(ind_task):  # we generate nb_sample_per_task * (ind_task+1) samples
+
+                train_loader_ind = self.generate_task(nb_sample_per_task, multi_annotation=True, classe2generate=classe2generate)
 
                 if i == 0:
                     train_loader_gen = deepcopy(train_loader_ind)
                 else:
                     train_loader_gen.concatenate(train_loader_ind)
-        
-        else:
-
-            # if we have only on task to generate
-            if one_task or ind_task == 0:  # generate only for the task ind_task
-                train_loader_gen = self.generate_task(ind_task, nb_sample_train, annotate=True)
-
-            else:  # else case we generate for all previous task
-                for i in range(ind_task + 1):  # we take from all task, actual one included
-                    train_loader_ind = self.generate_task(i, nb_sample_train, annotate=True)
-
-                    if i == 0:
-                        train_loader_gen = deepcopy(train_loader_ind)
-                    else:
-                        train_loader_gen.concatenate(train_loader_ind)
 
         # we save the concatenation of all generated with the actual task for train and test
         train_loader_gen.save(path)
         train_loader_gen.visualize_sample(path_samples, self.sample_num, [self.size, self.size, self.input_size])
 
         # return the the train loader with all data
-        return train_loader_gen #test_loader_gen # for instance we don't use the test set
+        return train_loader_gen  # test_loader_gen # for instance we don't use the test set
 
     # this generation only works for Baseline, disjoint
     # we generate the dataset based on one generator by task to get normally the best generated dataset
     # can be used to generate train or test data
-    def generate_best_dataset(self, ind_task, nb_sample_train, Train=True):
+    def generate_best_dataset(self, ind_task, nb_sample_per_task, one_task=True, Train=True, classe2generate=None):
+
+
+        # to generate 10 classes classe2generate is 9 as classes 0 to 9
+        if classe2generate is not None:
+            assert classe2generate <= self.num_classes
+            if self.task_type != "disjoint":
+                assert classe2generate == self.num_classes
+        else:
+            classe2generate = ind_task+1
 
         if Train:
             path = os.path.join(self.gen_dir, 'Best_train_Task_' + str(ind_task) + '.pt')
@@ -356,7 +343,7 @@ class GenerativeModel(object):
         # if we have only on task to generate
         if ind_task == 0:  # generate only for the task ind_task
             # we do not need automatic annotation since we have one generator by class
-            previous_data_train = self.generate_task(ind_task, nb_sample_train, annotate=False)
+            previous_data_train = self.generate_task(nb_sample_per_task, multi_annotation=False, classe2generate=classe2generate)
             #previous_data_train = DataLoader(tasks_tr, self.args)
 
         else:  # else we load the previous dataset and add the new data
@@ -366,7 +353,7 @@ class GenerativeModel(object):
             previous_data_train = DataLoader(torch.load(previous_path_train), self.args)
 
             # we do not need automatic annotation since we have one generator by class
-            train_loader_ind = self.generate_task(ind_task, nb_sample_train, annotate=False)
+            train_loader_ind = self.generate_task(nb_sample_per_task, multi_annotation=False, classe2generate=classe2generate)
 
             previous_data_train.concatenate(train_loader_ind)
 
@@ -375,9 +362,3 @@ class GenerativeModel(object):
 
         # return nothing
 
-    def get_one_hot(self, y):
-        y_onehot = torch.FloatTensor(y.shape[0], self.num_classes)
-        y_onehot.zero_()
-        y_onehot.scatter_(1, y[:, np.newaxis], 1.0)
-
-        return y_onehot

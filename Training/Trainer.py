@@ -18,8 +18,7 @@ class Trainer(object):
         if self.context=="Generation":
             self.reviewer = reviewer
 
-
-
+        self.conditional = args.conditional
         self.dataset = args.dataset
         self.batch_size=args.batch_size
         self.gpu_mode=args.gpu_mode
@@ -234,13 +233,14 @@ class Trainer(object):
     def regenerate_datasets_for_eval(self):
 
         nb_sample_train = self.sample_transfer  #len(self.train_loader[0])
-        nb_sample_test = int(nb_sample_train * 0.2)
+        #nb_sample_test = int(nb_sample_train * 0.2)
 
         for i in range(self.args.num_task):
             self.model.load_G(ind_task=i)
-            self.model.generate_dataset(i, nb_sample_train, one_task=True, Train=True)
-            #self.model.generate_dataset(i, nb_sample_test, one_task=True, Train=False)
+            self.generate_dataset(i, nb_sample_train, classe2generate=i+1, Train=True)
 
         return
 
+    def generate_dataset(self, ind_task,sample_per_classes, classe2generate, Train=True):
+        return self.model.generate_dataset(ind_task, sample_per_classes, one_task=False, Train=Train, classe2generate=classe2generate)
 

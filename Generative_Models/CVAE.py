@@ -5,11 +5,12 @@ import torch
 from torch.autograd import Variable
 
 from Generative_Models.VAE import VAE
+from Generative_Models.Conditional_Model import ConditionalModel
 
 from utils import variable
 
 
-class CVAE(VAE):
+class CVAE(ConditionalModel, VAE):
     def __init__(self, args):
         super(CVAE, self).__init__(args)
 

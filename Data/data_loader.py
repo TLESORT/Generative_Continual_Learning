@@ -69,7 +69,7 @@ class DataLoader(object):
 
         return self.dataset[self.current_task][1][indices], self.dataset[self.current_task][2][indices]
 
-    def concatenate(self, new_data):
+    def concatenate(self, new_data, task=0):
 
         '''
 
@@ -77,8 +77,8 @@ class DataLoader(object):
         :return: the actual dataset with supplementary data inside
         '''
 
-        self.dataset[self.current_task][1] = torch.cat((self.dataset[self.current_task][1], new_data.dataset[0][1]), 0)
-        self.dataset[self.current_task][2] = torch.cat((self.dataset[self.current_task][2], new_data.dataset[0][2]), 0)
+        self.dataset[self.current_task][1] = torch.cat((self.dataset[self.current_task][1], new_data.dataset[task][1]), 0).clone()
+        self.dataset[self.current_task][2] = torch.cat((self.dataset[self.current_task][2], new_data.dataset[task][2]), 0).clone()
 
         return self
 

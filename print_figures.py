@@ -12,19 +12,22 @@ from copy import copy, deepcopy
 
 
 def get_label(method, model, task):
-    if method == 'Generative_Transfer':
+    if method == 'Generative_Replay':
         predicat = "G_Replay"
     elif method == 'Baseline':
         predicat = "Fine-tuning"
     elif method == 'Baseline-up':
         predicat = "Up. Model"
-    elif 'Reharsal' in method:
+    elif 'Rehearsal' in method:
         predicat = "Rehearsal"
     elif "Ewc" in method:
         predicat = method
+    else:
+        print(method + "<- Does not exist")
 
     if "upperbound_disjoint" in task:
         predicat = "Up. Data"
+
 
     if not model is None:
         label = predicat + '--' + model
@@ -99,6 +102,66 @@ def load_train_eval(path, num_task, dataset, method, conditional):
         return np.array(np.loadtxt(os.path.join(path, id + 'Balance_classes_All_Tasks.txt'))), None
 
 
+def plot_perf_by_method_paper(save_dir, list_method, list_overall_best_score, list_overall_best_score_classes, list_dataset,
+                        Task):
+    style_c = cycle(['-', '--', ':', '-.'])
+
+    lign = len(list_method)
+    column = len(list_dataset)
+
+    for i, (Dataset) in enumerate(list_dataset):
+
+        if Dataset == 'mnist':
+            name_dataset = "MNIST"
+        elif Dataset == 'fashion':
+            name_dataset = "Fashion MNIST"
+
+        for iter, (Method) in enumerate(list_method):
+
+            # there is no results for this case
+            if Task == 'upperbound_disjoint' and not Method == 'Baseline':
+                continue
+
+            for iter2, [best_result, dataset, method, model, num_task, task] in enumerate(
+                    list_overall_best_score):
+
+                if best_result.shape[0] == 0:
+                    print("plot_perf_by_method : Problem with : " + str([dataset, method, model, num_task, task]))
+                    print(best_result)
+                    continue
+
+                if method == Method and dataset == Dataset and task == Task:
+                    label = model
+                    if len(best_result) > 1:
+                        best_result_mean = np.mean(best_result, axis=0)
+                        best_result_std = np.std(best_result, axis=0)
+                        plt.plot(range(num_task), best_result_mean, label=label, linestyle=next(style_c))
+                        plt.fill_between(range(num_task), best_result_mean - best_result_std,
+                                         best_result_mean + best_result_std, alpha=0.4)
+                    else:
+                        best_result = best_result.reshape(num_task)
+                        plt.plot(range(num_task), best_result, label=label, linestyle=next(style_c))
+
+            name_Method=get_label(Method, None, Task)
+            plt.xlabel("Tasks")
+            plt.ylim([0, 100])
+            plt.title(name_Method)
+            #plt.xticks([])
+
+            #plt.yticks([])
+            plt.ylabel('Fitting Capacity')
+
+            plt.legend(loc=2, title='Algo', prop={'size': 6})
+            # fig.text(0.04, 0.5, 'Fitting Capacity', va='center', ha='center', rotation='vertical')
+            plt.ylabel("Fitting Capacity")
+            plt.xticks(range(num_task))
+            plt.xlabel(name_dataset + ' disjoint Tasks')
+            plt.tight_layout()
+            # fig.text(0.5, 0.04, 'Tasks', ha='center')
+            plt.savefig(os.path.join(save_dir, Dataset + '_' + Task + '_' + Method + "_overall_accuracy.png"))
+            plt.clf()
+
+
 def plot_perf_by_method(save_dir, list_method, list_overall_best_score, list_overall_best_score_classes, list_dataset,
                         Task):
     style_c = cycle(['-', '--', ':', '-.'])
@@ -116,16 +179,6 @@ def plot_perf_by_method(save_dir, list_method, list_overall_best_score, list_ove
             name_dataset = "Fashion MNIST"
 
         for iter, (Method) in enumerate(list_method):
-
-            if Method == 'Baseline':
-                name_Method = "Fine-tuning"
-            elif Method == 'Ewc_5':
-                name_Method = "EWC"
-            elif Method == 'Generative_Transfer':
-                name_Method = "Generative Replay"
-            elif Method == 'Reharsal_balanced':
-                name_Method = "Rehearsal"
-
             indice = column * (iter) + i + 1
             plt.subplot(lign, column, indice)
 
@@ -153,6 +206,7 @@ def plot_perf_by_method(save_dir, list_method, list_overall_best_score, list_ove
                         best_result = best_result.reshape(num_task)
                         plt.plot(range(num_task), best_result, label=label, linestyle=next(style_c))
 
+            name_Method=get_label(Method, None, Task)
             plt.xlabel("Tasks")
             plt.ylim([0, 100])
             plt.title(name_Method)
@@ -213,6 +267,128 @@ def plot_perf_by_class(save_dir, list_method, list_overall_best_score, list_over
         plt.savefig(os.path.join(save_dir, Dataset + '_' + Task + '_' + Method + "_task0_accuracy.png"))
         plt.clf()
 
+def plot_variation(save_dir, list_method, list_overall_best_score, list_overall_best_score_classes, Dataset, Task):
+    style_c = cycle(['-', '--', ':', '-.'])
+    classes = ["0", "1", "2", "3",
+               "4", "5", "6", "7", "8", "9"]
+
+
+    for Method in list_method:
+
+        # there is no results for this case
+        if Task == 'upperbound_disjoint' and not Method == 'Baseline':
+            continue
+
+        for iter, [best_result_class, dataset, method, model, num_task, task] in enumerate(
+                list_overall_best_score_classes):
+
+            tasks = range(num_task)
+
+            fig, ax = plt.subplots()
+
+            if method == Method and dataset == Dataset and task == Task:
+                label = model
+                # print(best_result_class.shape)
+                # [seed, task, class]
+
+                # if len(best_result_class) > 1:
+                #     best_result_mean = np.mean(best_result_class, axis=0)
+                #     grid = best_result_mean
+                # else:
+                #     grid = best_result_class
+
+                # if grid.shape[0] == 0:
+                #     print("plot_variation : Problem with : " + str([dataset, method, model, num_task, task]))
+                #     continue
+                #
+                # grid = grid.reshape(10, num_task)
+
+                #grid = grid.astype(int).transpose()
+                #im = ax.imshow(grid)
+
+                if len(best_result_class) > 1:
+
+
+
+                    best_result_mean = np.mean(best_result_class, axis=0)
+                    best_result_std = np.std(best_result_class, axis=0)
+                    plt.plot(range(num_task), best_result_mean[:, 0], label=label, linestyle=next(style_c))
+                    plt.fill_between(range(num_task), best_result_mean[:, 0] - best_result_std[:, 0],
+                                     best_result_mean[:, 0] + best_result_std[:, 0], alpha=0.4)
+                else:
+                    best_result_class = best_result_class.reshape(num_task, 10)
+                    plt.plot(range(num_task), best_result_class[:, 0], label=label, linestyle=next(style_c))
+
+
+                plt.xlabel("Tasks")
+                plt.ylabel("Mean Accuracy per Classes")
+                plt.legend(loc=2, title='Algo')
+                plt.title('Fitting Capacity Grid')
+                plt.savefig(
+                    os.path.join(save_dir, "models", Dataset + '_' + Task + '_' + Method + '_' + model + "_forgetting.png"))
+                plt.clf()
+
+def plot_grid_variations(save_dir, list_method, list_overall_best_score, list_overall_best_score_classes, Dataset, Task):
+
+    classes = ["0", "1", "2", "3",
+               "4", "5", "6", "7", "8", "9"]
+
+
+    for Method in list_method:
+
+        # there is no results for this case
+        if Task == 'upperbound_disjoint' and not Method == 'Baseline':
+            continue
+
+        for iter, [best_result_class, dataset, method, model, num_task, task] in enumerate(
+                list_overall_best_score_classes):
+
+            tasks = range(num_task)
+
+            fig, ax = plt.subplots()
+
+            if method == Method and dataset == Dataset and task == Task:
+                # [seed, task, class]
+                variation = deepcopy(best_result_class)
+
+                for i in range(1, best_result_class.shape[1]): # from task 1 to last task (without task 0)
+                    variation[:,i,:] -= best_result_class[:,i-1,:]
+
+                if len(best_result_class) > 1:
+                    variation_mean = np.mean(variation, axis=0)
+                    grid = variation_mean
+                else:
+                    grid = variation
+
+                if grid.shape[0] == 0:
+                    print("plot_grid_class : Problem with : " + str([dataset, method, model, num_task, task]))
+                    continue
+
+                grid = grid.reshape(10, num_task)
+
+                grid = grid.astype(int).transpose()
+                im = ax.imshow(grid)
+
+                # Create colorbar
+                cbar = ax.figure.colorbar(im, ax=ax)
+                cbar.ax.set_ylabel("Fitting Capacity", rotation=-90, va="bottom")
+
+                ax.set_xticks(np.arange(grid.shape[0]))  # task
+                ax.set_yticks(np.arange(grid.shape[1]))  # classes
+                plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+                         rotation_mode="anchor")
+
+                for i in range(len(tasks)):
+                    for j in range(len(classes)):
+                        text = ax.text(j, i, grid[i, j],
+                                       ha="center", va="center", color="w")
+                plt.xlabel("Tasks")
+                plt.ylabel("Mean Variation Accuracy per Classes")
+                plt.legend(loc=2, title='Algo')
+                plt.title('Fitting Capacity Variation')
+                plt.savefig(
+                    os.path.join(save_dir, "models", Dataset + '_' + Task + '_' + Method + '_' + model + "_grid_variation.png"))
+                plt.clf()
 
 def plot_grid_class(save_dir, list_method, list_overall_best_score, list_overall_best_score_classes, Dataset, Task):
 
@@ -297,6 +473,7 @@ def plot_FID(save_dir, list_model, list_FID, Dataset, Task):
         plt.legend(loc=2, title='Algo')
         plt.savefig(os.path.join(save_dir, "models", Dataset + '_' + Task + '_' + Model + "_FID.png"))
         plt.clf()
+
 
 
 def plot_models_perf(save_dir, list_model, list_overall_best_score, list_overall_best_score_classes, Dataset, Task):
@@ -492,7 +669,6 @@ def parse_args():
     parser.add_argument('--others', type=bool, default=False)
     parser.add_argument('--trainEval', type=bool, default=False)
     parser.add_argument('--Accuracy', type=bool, default=False)
-    parser.add_argument('--FittingCapacity', type=bool, default=False)
     parser.add_argument('--Diagram', type=bool, default=False)
     parser.add_argument('--log_dir', type=str, default='logs', help='Logs directory')
     parser.add_argument('--save_dir', type=str, default='Figures_Paper', help='Figures directory')
@@ -503,8 +679,8 @@ def parse_args():
 
     return parser.parse_args()
 
-log_dir = './Archives/logs'
-save_dir = './Archives/Figures'
+log_dir = './Archives/logs_29_10'
+save_dir = './Archives/Figures_29_10'
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
@@ -527,7 +703,7 @@ baseline_classes = None
 
 
 list_model = ['GAN', 'CGAN', 'WGAN', 'VAE', 'CVAE', 'WGAN_GP']
-list_method = ['Baseline', 'Baseline-up', 'Generative_Transfer', 'Reharsal_balanced', 'Ewc_5']
+list_method = ['Baseline', 'Baseline-up', 'Generative_Replay', 'Rehearsal', 'Ewc_5']
 list_dataset = ['mnist', 'fashion']
 list_task = ['disjoint', 'upperbound_disjoint']
 # for evaluation of classifier only
@@ -657,6 +833,9 @@ if args.fitting_capacity:
             plot_grid_class(save_dir, list_method, list_overall_best_score, list_overall_best_score_classes,
                             dataset, task)
 
+            plot_grid_variations(save_dir, list_method, list_overall_best_score, list_overall_best_score_classes,
+                            dataset, task)
+
             if not 'upperbound' in task:
                 plot_models_perf(save_dir + '/models', list_model, list_overall_best_score,
                                  list_overall_best_score_classes, dataset,
@@ -665,6 +844,8 @@ if args.fitting_capacity:
                                     dataset, task)
 
     for task in list_task:
+        plot_perf_by_method_paper(save_dir, list_method, list_overall_best_score, list_overall_best_score_classes,
+                            list_dataset, task)
         plot_perf_by_method(save_dir, list_method, list_overall_best_score, list_overall_best_score_classes,
                             list_dataset, task)
 

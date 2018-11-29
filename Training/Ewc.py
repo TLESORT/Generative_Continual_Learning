@@ -237,9 +237,4 @@ class Ewc(Trainer):
             #self.model.generate_dataset(ind_task - 1, nb_sample_test, one_task=False, Train=False)
 
 
-            train_loader, test_loader = self.create_next_data(ind_task)
-
-            return train_loader, test_loader
-
-        train_loader, test_loader = self.create_next_data(ind_task)
         return train_loader, test_loader

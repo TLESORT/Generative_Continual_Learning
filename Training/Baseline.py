@@ -21,11 +21,12 @@ class Baseline(Trainer):
             nb_sample_test = int(nb_sample_train * 0.2)
 
             # we generate dataset for later evaluation with image from previous tasks
-            self.model.generate_dataset(ind_task - 1, nb_sample_train, one_task=False, Train=True)
+            self.model.generate_dataset(ind_task - 1, nb_sample_train, one_task=False, Train=True, classe2generate = ind_task)
             #self.model.generate_dataset(ind_task - 1, nb_sample_test, one_task=False, Train=False)
 
             # generate dataset with one generator by task
-            self.model.generate_best_dataset(ind_task - 1, nb_sample_train, Train=True)
+            self.model.generate_best_dataset(ind_task - 1, nb_sample_train, one_task = False, Train=True, classe2generate = ind_task)
+
             #self.model.generate_best_dataset(ind_task - 1, nb_sample_test, Train=False)
 
         train_loader, test_loader = self.create_next_data(ind_task)

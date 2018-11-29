@@ -124,12 +124,13 @@ class Classifier(object):
 
         self.net.load_state_dict(torch.load(expert_path))
 
-    def labelize(self, batch, ind_task):
+    def labelize(self, batch, nb_classes):
         self.net.eval()
         if self.gpu_mode:
             batch = batch.cuda(self.device)
         output = self.net(batch)
-        return output[:, :ind_task + 1].max(dim=1)[1]
+
+        return output[:, :nb_classes].max(dim=1)[1]
 
     def reinit(self):
         self.net.apply(Xavier)

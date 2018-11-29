@@ -5,6 +5,9 @@ class Generative_Replay(Trainer):
     def __init__(self, model, args):
         super(Generative_Replay, self).__init__(model, args)
 
+
+
+
     def create_next_data(self, ind_task):
 
         task_te_gen = None
@@ -21,9 +24,11 @@ class Generative_Replay(Trainer):
             print("numbe of train sample per task is fixed as : " + str(self.sample_transfer))
 
             nb_sample_train = self.sample_transfer # approximate size of one task
-            nb_sample_test = int(nb_sample_train * 0.2)
+            #nb_sample_test = int(nb_sample_train * 0.2)
 
-            task_tr_gen = self.model.generate_dataset(ind_task - 1, nb_sample_train, one_task=False, Train=True)
+            #task_tr_gen = self.model.generate_dataset(ind_task - 1, nb_sample_train, one_task=False, Train=True)
+            task_tr_gen = self.generate_dataset(ind_task, nb_sample_train, classe2generate=ind_task,
+                                                Train=True)
             #task_tr_gen = self.model.generate_dataset(ind_task - 1, nb_sample_test, one_task=False, Train=True)
 
             self.train_loader.concatenate(task_tr_gen)

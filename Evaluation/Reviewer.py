@@ -162,10 +162,10 @@ class Reviewer(object):
         valid_acc = []
         valid_acc_classes = []
 
-        path = os.path.join(self.sample_dir, id + 'samples4review_task_' + str(task) + '.png')
 
         if self.verbose:
             print("some sample from the generator")
+        path = os.path.join(self.sample_dir, id + 'samples4review_task_' + str(task) + '.png')
         data_loader_train.visualize_sample(path, self.sample_num, [self.size, self.size, self.input_size])
 
         print("Task : " + str(task))
