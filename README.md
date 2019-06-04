@@ -85,11 +85,11 @@ Generate Data
 ```bash
 cd ./Data
 #For the expert
-python main.py --task disjoint --dataset mnist --n_tasks 1 --dir ../Archives
+python main_data.py --task disjoint --dataset mnist --n_tasks 1 --dir ../Archives
 #For the models to train
-python main.py --task disjoint --dataset mnist --n_tasks 10 --dir ../Archives
+python main_data.py --task disjoint --dataset mnist --n_tasks 10 --dir ../Archives
 #For Upperbound and FID
-python main.py --task disjoint --upperbound True --dataset mnist --n_tasks 10 --dir ../Archives
+python main_data.py --task disjoint --upperbound True --dataset mnist --n_tasks 10 --dir ../Archives
 
 # Go back to main repo
 cd ..
