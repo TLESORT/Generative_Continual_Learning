@@ -164,7 +164,7 @@ class Net(nn.Module):
             return x
         x = self.relu(self.fc1(x))
         x = self.fc2(x)
-        return F.log_softmax(x)
+        return F.log_softmax(x, dim=1)
 
     def weights_init(self, m):
         classname = m.__class__.__name__
