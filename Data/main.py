@@ -59,6 +59,7 @@ args.test_file = 'test.pt'
 # download data if possible
 if args.dataset == 'mnist':
     datasets.MNIST(args.i, train=True, download=True, transform=transforms.ToTensor())
+    args.i = os.path.join(args.i, 'MNIST')
 elif args.dataset == 'fashion':
     fashion(args.i, train=True, download=True, transform=transforms.ToTensor())
 elif args.dataset == 'cifar10':

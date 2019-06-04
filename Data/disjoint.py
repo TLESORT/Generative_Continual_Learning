@@ -73,8 +73,8 @@ class Disjoint(object):
             x_tr = x_tr.float().view(x_tr.size(0), -1)
             x_te = x_te.float().view(x_te.size(0), -1)
         else:
-            assert os.path.isfile(os.path.join(self.i, self.train_file))
-            assert os.path.isfile(os.path.join(self.i, self.test_file))
+            assert os.path.isfile(os.path.join(self.i, self.train_file)), print(os.path.join(self.i, self.train_file))
+            assert os.path.isfile(os.path.join(self.i, self.test_file)), print(os.path.join(self.i, self.test_file))
 
             x_tr, y_tr = torch.load(os.path.join(self.i, self.train_file))
             x_te, y_te = torch.load(os.path.join(self.i, self.test_file))
