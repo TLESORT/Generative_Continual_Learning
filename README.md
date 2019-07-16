@@ -1,4 +1,4 @@
-# Generative Models from the perspective of Continual Learning
+# Generative Models from the perspective of Continual Learning, *IJCNN 2019, Budapest
 
 ## Abstract
 
