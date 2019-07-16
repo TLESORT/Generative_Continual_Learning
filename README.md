@@ -1,4 +1,5 @@
-# **Generative Models from the perspective of Continual Learning**, *Timothée Lesort, Hugo Caselles-Dupré, Michael Garcia-Ortiz, Andrei Stoian, David Filliat* IJCNN 2019, Budapest
+# **Generative Models from the perspective of Continual Learning**
+*Timothée Lesort, Hugo Caselles-Dupré, Michael Garcia-Ortiz, Andrei Stoian, David Filliat* IJCNN 2019, Budapest
 
 ## Abstract
 
