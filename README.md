@@ -22,7 +22,6 @@ Example of generative tasks sequence and generation capability to reach.
   year={2019},
   organization={IEEE}
 }
-
 ```
 ## Installation
 
