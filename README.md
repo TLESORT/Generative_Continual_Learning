@@ -7,6 +7,10 @@ Which generative model is the most suitable for Continual Learning? This paper a
 We investigate how several models learn and forget, considering various strategies: rehearsal, regularization, generative replay and fine-tuning. We used two quantitative metrics to estimate the generation quality and memory ability. We experiment with sequential tasks on three commonly used benchmarks for Continual Learning (MNIST, Fashion MNIST and CIFAR10).<br />
 We found that among all models, the original GAN performs best and among Continual Learning strategies, generative replay outperforms all other methods. Even if we found satisfactory combinations on MNIST and Fashion MNIST, training generative models sequentially on CIFAR10 is particularly instable, and remains a challenge.<br />
 
+<img src="./Archives/Images/task_explained.png" width="800" alt="Sequence of Task">
+Example of generative tasks sequence and generation capability to reach.
+
+
 ### Citing the Project
 
 ```Array.<string>
@@ -20,11 +24,6 @@ We found that among all models, the original GAN performs best and among Continu
 }
 
 ```
-
-
-<img src="./Archives/Images/task_explained.png" width="800" alt="Sequence of Task">
-Example of generative tasks sequence and generation capability to reach.
-
 ## Installation
 
 ### Clone Repos
